@@ -45,7 +45,6 @@ c(1, c(2, c(3, 4)))
 # the same as
 c(1, 2, 3, 4)
 ```
-
 Missing values are specified with `NA`, which is a logical vector of length 1. `NA` will always be coerced to the correct type if used inside `c()`, or you can create NAs of a specific type with `NA_real_` (a double vector), `NA_integer_` and `NA_character_`.
 
 #### Types and tests
