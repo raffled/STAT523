@@ -57,6 +57,9 @@ var hljs=new function(){function m(p){return p.replace(/&/gm,"&amp;").replace(/<
 hljs.initHighlightingOnLoad();
 </script>
 
+<!-- MathJax scripts -->
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
 
 
 <style type="text/css">
@@ -213,57 +216,240 @@ hr {
 <li>Create vectors of each of the different primitive types. i.e., integer, double, logical, and character. Create matrices by attaching <code>dim</code> attributes to those vectors. Look up the help for <code>dimnames</code> and attach <code>dimnames</code> to these resulting matrices.</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">## Generalize
+add.dim &lt;- function(vec){
+    dim(vec) &lt;- c(3, 3)
+    dimnames(vec) &lt;- list(paste(&quot;R&quot;, 1:3, sep = &quot;&quot;),
+                          paste(&quot;C&quot;, 1:3, sep = &quot;&quot;))
+    vec
+}
+## Integer
+int.vec &lt;- integer(9)
+add.dim(int.vec)
+</code></pre>
+
+<pre><code>##    C1 C2 C3
+## R1  0  0  0
+## R2  0  0  0
+## R3  0  0  0
+</code></pre>
+
+<pre><code class="r">## Double
+double.vec &lt;- numeric(9)
+add.dim(double.vec)
+</code></pre>
+
+<pre><code>##    C1 C2 C3
+## R1  0  0  0
+## R2  0  0  0
+## R3  0  0  0
+</code></pre>
+
+<pre><code class="r">## Logical
+logical.vec &lt;- logical(9)
+add.dim(logical.vec)
+</code></pre>
+
+<pre><code>##       C1    C2    C3
+## R1 FALSE FALSE FALSE
+## R2 FALSE FALSE FALSE
+## R3 FALSE FALSE FALSE
+</code></pre>
+
+<pre><code class="r">## Character
+char.vec &lt;- character(9)
+add.dim(char.vec)
+</code></pre>
+
+<pre><code>##    C1 C2 C3
+## R1 &quot;&quot; &quot;&quot; &quot;&quot;
+## R2 &quot;&quot; &quot;&quot; &quot;&quot;
+## R3 &quot;&quot; &quot;&quot; &quot;&quot;
 </code></pre>
 
 <ol>
 <li>Create a list of length 4 and then add a <code>dim</code> attribute to it. What happens?</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">(foo.list &lt;- list(A = 1:2, B = 3:4, C = 5:6, D = 7:8))
 </code></pre>
+
+<pre><code>## $A
+## [1] 1 2
+## 
+## $B
+## [1] 3 4
+## 
+## $C
+## [1] 5 6
+## 
+## $D
+## [1] 7 8
+</code></pre>
+
+<pre><code class="r">length(foo.list)
+</code></pre>
+
+<pre><code>## [1] 4
+</code></pre>
+
+<pre><code class="r">dim(foo.list) &lt;- c(2, 2)
+foo.list
+</code></pre>
+
+<pre><code>##      [,1]      [,2]     
+## [1,] Integer,2 Integer,2
+## [2,] Integer,2 Integer,2
+</code></pre>
+
+<pre><code class="r">class(foo.list)
+</code></pre>
+
+<pre><code>## [1] &quot;matrix&quot;
+</code></pre>
+
+<pre><code class="r">class(foo.list[1,1])
+</code></pre>
+
+<pre><code>## [1] &quot;list&quot;
+</code></pre>
+
+<p>By adding a dimension attribute, the list is coerced into a matrix of lists.</p>
 
 <ol>
 <li>Look up the help page for <code>data.frame</code> and use the example code to create a small data frame containing numeric variables and factors.</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">(foo.df &lt;- data.frame(trt = letters[1:3], x = 1:3, y = rnorm(3)))
+</code></pre>
+
+<pre><code>##   trt x         y
+## 1   a 1 0.3783686
+## 2   b 2 0.6103906
+## 3   c 3 0.4141542
+</code></pre>
+
+<pre><code class="r">sapply(foo.df, class)
+</code></pre>
+
+<pre><code>##       trt         x         y 
+##  &quot;factor&quot; &quot;integer&quot; &quot;numeric&quot;
 </code></pre>
 
 <ol>
 <li>Use the <code>seq</code> function to generate a subscript vector that selects those elements of a vector that have even-numbered subscripts.</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">(foo &lt;- round(rnorm(10), 2))
+</code></pre>
+
+<pre><code>##  [1]  1.17 -0.60  0.80  0.63 -0.21  0.01 -0.03  0.74  0.08 -0.28
+</code></pre>
+
+<pre><code class="r">(inds &lt;- seq(2, 10, 2))
+</code></pre>
+
+<pre><code>## [1]  2  4  6  8 10
+</code></pre>
+
+<pre><code class="r">foo[inds]
+</code></pre>
+
+<pre><code>## [1] -0.60  0.63  0.01  0.74 -0.28
 </code></pre>
 
 <ol>
 <li>Verify that vectors can have duplicated names and that if a subscript matches a duplicated name, only the first value is returned. What happens with <code>x[NA]</code>?</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">foo &lt;- 1:5
+names(foo) &lt;- c(&quot;A&quot;, &quot;A&quot;, &quot;A&quot;, &quot;B&quot;, &quot;C&quot;)
+foo
 </code></pre>
+
+<pre><code>## A A A B C 
+## 1 2 3 4 5
+</code></pre>
+
+<pre><code class="r">foo[&quot;A&quot;]
+</code></pre>
+
+<pre><code>## A 
+## 1
+</code></pre>
+
+<p>We do see that we can have duplicate names for vectors and that, when
+subsetting by name, only the first is returned.</p>
+
+<pre><code class="r">foo[NA]
+</code></pre>
+
+<pre><code>## &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; 
+##   NA   NA   NA   NA   NA
+</code></pre>
+
+<p>Subsetting with <code>NA</code> returns a vector of the same length as the
+vector, but all names and values are missing.</p>
 
 <ol>
 <li>Use logical subscripts to extract the even-numbered elements of the <code>letters</code> vector.</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">letters[1:26 %% 2 == 0]
+</code></pre>
+
+<pre><code>##  [1] &quot;b&quot; &quot;d&quot; &quot;f&quot; &quot;h&quot; &quot;j&quot; &quot;l&quot; &quot;n&quot; &quot;p&quot; &quot;r&quot; &quot;t&quot; &quot;v&quot; &quot;x&quot; &quot;z&quot;
 </code></pre>
 
 <ol>
 <li>Let <code>x</code> be a vector of length 10 generated by <code>1:10</code> and suppose it has a dimension attribute so that it is a matrix with 2 columns and 5 rows. What is the matrix location of the 7th element of <code>x</code>? That is, which row and column is it in? Alternatively, which element of <code>x</code> is in the second row, first column?</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">x &lt;- 1:10
+dim(x) &lt;- c(5, 2)
+x
 </code></pre>
+
+<pre><code>##      [,1] [,2]
+## [1,]    1    6
+## [2,]    2    7
+## [3,]    3    8
+## [4,]    4    9
+## [5,]    5   10
+</code></pre>
+
+<p>When <code>R</code> coerces the vector into the \(5 \times 2\) matrix, it creates
+it by columns, i.e. the first column will contain the
+first five values and the second column the last five.</p>
+
+<p>Given this, the seventh element will be the second value in the second
+column with coordinates \((2, 2)\).</p>
 
 <ol>
 <li>What does <code>as.matrix()</code> do when applied to a data frame with columns of different types?</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">foo.df
 </code></pre>
+
+<pre><code>##   trt x         y
+## 1   a 1 0.3783686
+## 2   b 2 0.6103906
+## 3   c 3 0.4141542
+</code></pre>
+
+<pre><code class="r">as.matrix(foo.df)
+</code></pre>
+
+<pre><code>##      trt x   y          
+## [1,] &quot;a&quot; &quot;1&quot; &quot;0.3783686&quot;
+## [2,] &quot;b&quot; &quot;2&quot; &quot;0.6103906&quot;
+## [3,] &quot;c&quot; &quot;3&quot; &quot;0.4141542&quot;
+</code></pre>
+
+<p>Because <code>character</code> is the most general class (i.e., all other classes
+can be represented as a string), data.frames of mixed classes are
+coerced to such that all values are strings.</p>
 
 <ol>
 <li>Fix each of the following common data frame subsetting errors:</li>
@@ -275,11 +461,137 @@ mtcars[mtcars$cyl &lt;= 5]
 mtcars[mtcars$cyl == 4 | 6, ]
 </code></pre>
 
+<p>Fixed:</p>
+
+<pre><code class="r">mtcars[mtcars$cyl == 4, ]
+mtcars[-c(1:4), ]
+mtcars[mtcars$cyl &lt;= 5, ]
+## mtcars[mtcars$cyl == 4 | mtcars$cyl == 6, ]
+mtcars[mtcars$cyl != 8, ] ## more concise
+</code></pre>
+
 <ol>
 <li>Consider the linear model: <code>mod &lt;- lm(mpg ~ wt, data = mtcars)</code>. Describe the data structure of <code>mod</code>, including its componets. Extract the coefficients, residuals, and the residual degrees of freedom. Extract the R squared from the model summary, i.e., from <code>summary(mod)</code>.</li>
 </ol>
 
-<pre><code class="r"># Put your R code here.
+<pre><code class="r">mod &lt;- lm(mpg ~ wt, data = mtcars)
+str(mod)
+</code></pre>
+
+<pre><code>## List of 12
+##  $ coefficients : Named num [1:2] 37.29 -5.34
+##   ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;(Intercept)&quot; &quot;wt&quot;
+##  $ residuals    : Named num [1:32] -2.28 -0.92 -2.09 1.3 -0.2 ...
+##   ..- attr(*, &quot;names&quot;)= chr [1:32] &quot;Mazda RX4&quot; &quot;Mazda RX4 Wag&quot; &quot;Datsun 710&quot; &quot;Hornet 4 Drive&quot; ...
+##  $ effects      : Named num [1:32] -113.65 -29.116 -1.661 1.631 0.111 ...
+##   ..- attr(*, &quot;names&quot;)= chr [1:32] &quot;(Intercept)&quot; &quot;wt&quot; &quot;&quot; &quot;&quot; ...
+##  $ rank         : int 2
+##  $ fitted.values: Named num [1:32] 23.3 21.9 24.9 20.1 18.9 ...
+##   ..- attr(*, &quot;names&quot;)= chr [1:32] &quot;Mazda RX4&quot; &quot;Mazda RX4 Wag&quot; &quot;Datsun 710&quot; &quot;Hornet 4 Drive&quot; ...
+##  $ assign       : int [1:2] 0 1
+##  $ qr           :List of 5
+##   ..$ qr   : num [1:32, 1:2] -5.657 0.177 0.177 0.177 0.177 ...
+##   .. ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. .. ..$ : chr [1:32] &quot;Mazda RX4&quot; &quot;Mazda RX4 Wag&quot; &quot;Datsun 710&quot; &quot;Hornet 4 Drive&quot; ...
+##   .. .. ..$ : chr [1:2] &quot;(Intercept)&quot; &quot;wt&quot;
+##   .. ..- attr(*, &quot;assign&quot;)= int [1:2] 0 1
+##   ..$ qraux: num [1:2] 1.18 1.05
+##   ..$ pivot: int [1:2] 1 2
+##   ..$ tol  : num 1e-07
+##   ..$ rank : int 2
+##   ..- attr(*, &quot;class&quot;)= chr &quot;qr&quot;
+##  $ df.residual  : int 30
+##  $ xlevels      : Named list()
+##  $ call         : language lm(formula = mpg ~ wt, data = mtcars)
+##  $ terms        :Classes &#39;terms&#39;, &#39;formula&#39; length 3 mpg ~ wt
+##   .. ..- attr(*, &quot;variables&quot;)= language list(mpg, wt)
+##   .. ..- attr(*, &quot;factors&quot;)= int [1:2, 1] 0 1
+##   .. .. ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. .. .. ..$ : chr [1:2] &quot;mpg&quot; &quot;wt&quot;
+##   .. .. .. ..$ : chr &quot;wt&quot;
+##   .. ..- attr(*, &quot;term.labels&quot;)= chr &quot;wt&quot;
+##   .. ..- attr(*, &quot;order&quot;)= int 1
+##   .. ..- attr(*, &quot;intercept&quot;)= int 1
+##   .. ..- attr(*, &quot;response&quot;)= int 1
+##   .. ..- attr(*, &quot;.Environment&quot;)=&lt;environment: R_GlobalEnv&gt; 
+##   .. ..- attr(*, &quot;predvars&quot;)= language list(mpg, wt)
+##   .. ..- attr(*, &quot;dataClasses&quot;)= Named chr [1:2] &quot;numeric&quot; &quot;numeric&quot;
+##   .. .. ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;mpg&quot; &quot;wt&quot;
+##  $ model        :&#39;data.frame&#39;:   32 obs. of  2 variables:
+##   ..$ mpg: num [1:32] 21 21 22.8 21.4 18.7 18.1 14.3 24.4 22.8 19.2 ...
+##   ..$ wt : num [1:32] 2.62 2.88 2.32 3.21 3.44 ...
+##   ..- attr(*, &quot;terms&quot;)=Classes &#39;terms&#39;, &#39;formula&#39; length 3 mpg ~ wt
+##   .. .. ..- attr(*, &quot;variables&quot;)= language list(mpg, wt)
+##   .. .. ..- attr(*, &quot;factors&quot;)= int [1:2, 1] 0 1
+##   .. .. .. ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. .. .. .. ..$ : chr [1:2] &quot;mpg&quot; &quot;wt&quot;
+##   .. .. .. .. ..$ : chr &quot;wt&quot;
+##   .. .. ..- attr(*, &quot;term.labels&quot;)= chr &quot;wt&quot;
+##   .. .. ..- attr(*, &quot;order&quot;)= int 1
+##   .. .. ..- attr(*, &quot;intercept&quot;)= int 1
+##   .. .. ..- attr(*, &quot;response&quot;)= int 1
+##   .. .. ..- attr(*, &quot;.Environment&quot;)=&lt;environment: R_GlobalEnv&gt; 
+##   .. .. ..- attr(*, &quot;predvars&quot;)= language list(mpg, wt)
+##   .. .. ..- attr(*, &quot;dataClasses&quot;)= Named chr [1:2] &quot;numeric&quot; &quot;numeric&quot;
+##   .. .. .. ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;mpg&quot; &quot;wt&quot;
+##  - attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+</code></pre>
+
+<p><code>mod</code> is a list of twelve structures with class <code>lm</code>.  Each element of
+<code>mod</code> contains some information about the model that was fit, such as
+the model.matrix, residuals, coefficients, etc.</p>
+
+<p>Because class objects in <code>R</code> are just listed with a class attribute,
+the components in any class object can be extracted with the <code>$</code>
+operator or by using the name in the double brackets.  Additionally,
+<code>lm</code> is a generic class which supports a  common convention of
+functions for extracting many of these  components with the function
+name matching the component.</p>
+
+<pre><code class="r">mod$coef
+</code></pre>
+
+<pre><code>## (Intercept)          wt 
+##   37.285126   -5.344472
+</code></pre>
+
+<pre><code class="r">mod[[&quot;residuals&quot;]]
+</code></pre>
+
+<pre><code>##           Mazda RX4       Mazda RX4 Wag          Datsun 710 
+##          -2.2826106          -0.9197704          -2.0859521 
+##      Hornet 4 Drive   Hornet Sportabout             Valiant 
+##           1.2973499          -0.2001440          -0.6932545 
+##          Duster 360           Merc 240D            Merc 230 
+##          -3.9053627           4.1637381           2.3499593 
+##            Merc 280           Merc 280C          Merc 450SE 
+##           0.2998560          -1.1001440           0.8668731 
+##          Merc 450SL         Merc 450SLC  Cadillac Fleetwood 
+##          -0.0502472          -1.8830236           1.1733496 
+## Lincoln Continental   Chrysler Imperial            Fiat 128 
+##           2.1032876           5.9810744           6.8727113 
+##         Honda Civic      Toyota Corolla       Toyota Corona 
+##           1.7461954           6.4219792          -2.6110037 
+##    Dodge Challenger         AMC Javelin          Camaro Z28 
+##          -2.9725862          -3.7268663          -3.4623553 
+##    Pontiac Firebird           Fiat X1-9       Porsche 914-2 
+##           2.4643670           0.3564263           0.1520430 
+##        Lotus Europa      Ford Pantera L        Ferrari Dino 
+##           1.2010593          -4.5431513          -2.7809399 
+##       Maserati Bora          Volvo 142E 
+##          -3.2053627          -1.0274952
+</code></pre>
+
+<pre><code class="r">df.residual(mod)
+</code></pre>
+
+<pre><code>## [1] 30
+</code></pre>
+
+<pre><code class="r">summary(mod)$r.sq
+</code></pre>
+
+<pre><code>## [1] 0.7528328
 </code></pre>
 
 </body>
