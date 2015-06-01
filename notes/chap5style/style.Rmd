@@ -1,0 +1,35 @@
+---
+title: "Vocabulary and Style"
+author: "jharner"
+date: "May 26, 2015"
+output: html_document
+---
+
+# Chap 4 Vocabulary
+
+The text has a list of common R functions grouped by the following categories. Use `help()` to determine usage.
+
+## 4.1 The basics
+
+## 4.2 Common data structures
+
+## 4.3 Statistics
+
+## 4.4 Working with R
+
+## 4.5 I/O
+
+# Chap 5 Style
+
+A good style guide is important for readability. The following style guide is based on Google's R style guide, but with changes.
+
+Use the `formatR` package to clean up your existing R code. The main difference between Hadley's style and Google's style is in variable naming and `if` statements.
+
+See the text and Google's R Style Guide for examples.
+
+## 5.1 Notation and naming
+
+## 5.2 Syntax
+
+## 5.3 Organisation
+
