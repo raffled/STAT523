@@ -108,7 +108,7 @@ as.matrix(foo.df)
 
 Because `character` is the most general class (i.e., all other classes
 can be represented as a string), data.frames of mixed classes are
-coerced to such that all values are strings.
+coerced such that all values are strings.
 
 9. Fix each of the following common data frame subsetting errors:
 
@@ -125,7 +125,7 @@ mtcars[mtcars$cyl == 4, ]
 mtcars[-c(1:4), ]
 mtcars[mtcars$cyl <= 5, ]
 ## mtcars[mtcars$cyl == 4 | mtcars$cyl == 6, ]
-mtcars[mtcars$cyl != 8, ] ## more concise
+mtcars[mtcars$cyl != 8, ] ## more concise, since cyl = {4, 6, 8}
 ```
 
 10. Consider the linear model: `mod <- lm(mpg ~ wt, data = mtcars)`. Describe the data structure of `mod`, including its componets. Extract the coefficients, residuals, and the residual degrees of freedom. Extract the R squared from the model summary, i.e., from `summary(mod)`.
@@ -134,16 +134,16 @@ mtcars[mtcars$cyl != 8, ] ## more concise
 mod <- lm(mpg ~ wt, data = mtcars)
 str(mod)
 ```
-`mod` is a list of twelve structures with class `lm`.  Each element of
+`mod` is a named list of twelve structures with class `lm`.  Each element of
 `mod` contains some information about the model that was fit, such as
 the model.matrix, residuals, coefficients, etc.
 
-Because class objects in `R` are just listed with a class attribute,
+Because (S3) class objects in `R` are just lists with a class attribute,
 the components in any class object can be extracted with the `$`
 operator or by using the name in the double brackets.  Additionally,
-`lm` is a generic class which supports a  common convention of
+`lm` is a generic class which supports acommon convention of
 functions for extracting many of these  components with the function
-name matching the component.
+name matching the component name.
 
 
 ```{r}
