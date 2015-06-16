@@ -1,0 +1,328 @@
+---
+title: "S3 Tutorial"
+author: "jharner"
+date: "June 9, 2015"
+output: html_document
+---
+
+## 1 Introduction
+
+R Packages allow for easy, transparent and cross-platform extension of the R base system. R packages are a comfortable way to maintain collections of R functions and data sets. The package system allows many more people to contribute to R while still enforcing some standards. But packages are also a convenient way to maintain private functions and share them with your colleagues. 
+
+Packages are not only an easy way of sharing computational methods among peers, they also offer many advantages from a system administration point of view. Packages can be dynamically loaded and unloaded on runtime and hence only occupy memory when actually used. Installations and updates are fully automated and can be executed from inside or outside R. The packaging system has tools for software validation which check that documentation exists and is technically in sync with the code, spot common errors, and check that examples actually run.
+
+R package terms:  
+
+* **Package**: An extension of the R base system with code, data and documentation in standardized format.  
+* **Library**: A directory containing installed packages.  
+* **Repository**: A website providing packages for installation.  
+* **Source**: The original version of a package with human-readable text and code.  
+* **Binary**: A compiled version of a package with computer-readable text and code, may work only on a specific platform.  
+* **Base packages**: Part of the R source tree, maintained by R Core.  
+* **Recommended packages**: Part of every R installation, but not necessarily maintained by R Core.  
+* **Contributed packages**: All the rest. This does not mean that these packages are necessarily of lesser quality than the above, e.g., many contributed packages on CRAN are written and maintained by R Core members. We simply try to keep the base distribution as lean as possible. 
+
+## 2 R code for linear regression
+
+We will develop R code for the standard linear regression model:
+\[
+  y = x^{\prime}\beta + \epsilon, \quad \epsilon \sim N(0, \sigma^2)
+\]
+
+The goal is not to implement all the details of the standard R function `lm()` for the problem, but to write a simple function which computes the OLS estimate and has a “professional look and feel” in the sense that the interface is similar to the interface of `lm()`.
+
+If we are given a design matrix $X$ and response vector $y$, then the OLS estimate is:
+\[
+  \hat\beta = (X'X)^{-1}X'y
+\]
+with covariance matrix
+\[
+  \mbox{var}(\hat\beta) = \sigma^2 (X'X)^{-1}.
+\]
+
+For numerical reasons it is not advisable to compute $\hat\beta$ using the above formula, it is better to use, e.g., a QR decomposition or any other numerically good way to solve a linear system of equations. Hence, a minimal R function for linear regression is:
+```{r}
+linmodEst <- function(x, y)
+{
+    ## compute QR-decomposition of x
+    qx <- qr(x)
+    
+    ## compute (x’x)^(-1) x’y
+    coef <- solve.qr(qx, y)
+    
+    ## degrees of freedom and standard deviation of residuals
+    df <- nrow(x)-ncol(x)
+    sigma2 <- sum((y - x%*%coef)^2)/df
+    
+    ## compute sigma^2 * (x’x)^-1
+    vcov <- sigma2 * chol2inv(qx$qr)
+    colnames(vcov) <- rownames(vcov) <- colnames(x)
+    
+    list(coefficients = coef,
+         vcov = vcov,
+         sigma = sqrt(sigma2),
+         df = df)
+}
+```
+
+If we use this function to predict heart weight from body weight in the classic Fisher cats data from package **MASS**, we get:
+```{r}
+data(cats, package="MASS")
+linmodEst(cbind(1, cats$Bwt), cats$Hwt)
+```
+
+The standard R function for linear models:
+```{r}
+lm1 <- lm(Hwt~Bwt, data=cats)
+lm1
+vcov(lm1)
+```
+
+The numerical estimates are exactly the same, but our code lacks a convenient user interface:  
+
+1. Prettier formatting of results.  
+2. Add utilities for fitted model like a `summary()` function to test for significance of parameters.  
+3. Handle categorical predictors.  
+4. Use formulas for model specification.  
+
+## 3 Object oriented programming in R
+
+### 3.1 S3 and S4
+
+Our function linmodEst returns a list with four named elements, the parameter estimates and their covariance matrix, and the standard deviation and degrees of freedom of the residuals. From the context it is clear to us that this is a linear model fit, however, nobody told the computer so far. For the computer this is simply a list containing a vector, a matrix and two scalar values. Many programming languages, including S, use so-called
+
+1. **classes** to define how objects of a certain type look like, and  
+2. **methods** to define special functions operating on objects of a certain class
+
+A class defines how an object is represented in the program, while an object is an instance of the class that exists at run time. In our case we will shortly define a class for linear model fits. The class is the abstract definition, while every time we actually use it to store the results for a given data set, we create an object of the class.
+
+Once the classes are defined we probably want to perform some computations on objects. In most cases we do not care how the object is stored internally, the computer should decide how to perform the tasks. The S way of reaching this goal is to use generic functions and method dispatch: the same function performs different computations depending on the classes of its arguments.
+
+S is rare because it is both interactive and has a system for object-orientation. Designing classes clearly is programming, yet to make S useful as an interactive data analysis environment, it makes sense that it is a functional language. In “real” object-oriented programming (OOP) languages like C++ or Java class and method definitions are tightly bound together, methods are part of classes (and hence objects). We want incremental and interactive additions like user- defined methods for pre-defined classes. These additions can be made at any point in time, even on the fly at the command line prompt while we analyze a data set. S tries to make a compromise between object orientation and interactive use, and although compromises are never optimal with respect to all goals they try to reach, they often work surprisingly well in practice.
+
+The S language has two object systems, known informally as S3 and S4.  
+
+* **S3 objects**, classes and methods have been available in R from the beginning, they are informal, yet “very interactive”.
+* **S4** objects, classes and methods are much more formal and rigorous, hence "less interactive."
+
+S4 provides formal object oriented programming within an interactive environment. It can help a lot to write clean and consistent code, checks automatically if objects conform to class definitions, and has much more features than S3, which in turn is more a set of naming conventions than a true OOP system, but it is sufficient for most purposes.
+
+### 3.2 The S3 system
+
+If we look at the following R session we already see the S3 system of classes and methods at work:
+```{r}
+x <- rep(0:1, c(10, 20))
+x
+class(x)
+summary(x)
+y <- as.factor(x)
+class(y)
+summary(y)
+```
+Function `summary()` is a generic function which performs different operations on objects of different classes. In S3 only the class of the first argument to a generic function counts. For objects of class "integer" like `x` the five number summary plus the mean is calculated, for objects of class "factor" like `y` a table of counts.
+
+Classes are attached to objects as an attribute:
+```{r}
+attributes(y)
+```
+
+In S3 there is no formal definition of a class. To create an object from a new class, one simply sets the class attribute of an object to the name of the desired class:
+```{r}
+myx <- x
+class(myx) <- "myvector"
+class(myx)
+```
+
+Of course in most cases it is useless to define a class without defining any methods for the class, i.e., functions which do special things for objects from the class. In the simplest case one defines new methods for already existing generic functions like `print()`, `summary()` or `plot()`. These are available for objects of many different classes and should do the following:  
+
+* `print(x, ...)`: this method is called, when the name of an object is typed at the prompt. For data objects it usually shows the complete data, for fitted models a short description of the model (only a few lines).
+
+* `summary(x, ...)`: for data objects summary statistics, for fitted models statistics on parameters, residuals and model fit (approx. one screen). The summary method should not directly create screen output, but return an object which is then `print()`ed.
+
+* `plot(x, y, ...)`: create a plot of the object in a graphics device.
+
+Generic functions in S3 take a look at the class of their first argument and do method dispatch based on a naming convention: `foo()` methods for objects of class "bar" are called `foo.bar()`, e.g., `summary.factor()` or `print.myvector()`. If no bar method is found, S3 searches for `foo.default()`. Inheritance can be emulated by using a class vector.
+
+Let us return to our new class called "myvector". To define a new `print()` method for our class, all we have to do is define a function called `print.myvector()`:
+```{r}
+print.myvector <- function(x, ...){
+    cat("This is my vector:\n")
+    cat(paste(x[1:5]), "...\n")
+}
+```
+
+If we now have a look at `x` and `myx` they are printed differently:
+```{r}
+x
+myx
+```
+
+So we see that S3 is highly interactive, one can create new classes and change methods definitions on the fly, and it is easy to learn. Because everything is just solved by naming conventions (which are not checked by R at runtime1), it is easy to break the rules. A simple example: Function `lm()` returns objects of class "lm". Methods for that class of course expect a certain format for the objects, e.g., that they contain regression coefficients etc as the following simple example shows:
+```{r}
+# nolm <- "This is not a linear model!"
+# class(nolm) <- "lm"
+# nolm
+```
+
+The computer should detect the real problem: a character string is not an "lm" object. S4 provides facilities for solving this problem, however at the expense of a steeper learning curve.
+
+In addition to the simple naming convention on how to find objects, there are several more conventions which make it easier to use methods in practice:  
+
+* A method must have all the arguments of the generic, including ... if the generic does.
+* A method must have arguments in exactly the same order as the generic.
+* If the generic specifies defaults, all methods should use the same defaults.
+
+The reason for the above rules is that they make it less necessary to read the documentation for all methods corresponding to the same generic. The user can rely on common rules, all methods operate “as similar” as possible.
+
+### 3.3 Classes and methods for linear regression
+
+We will now define classes and methods for our linear regression example. Because we want to write a formula interface we make our main function `linmod()` generic, and write a default method where the first argument is a design matrix (or something which can be converted to a matrix). Later-on we will add a second method where the first argument is a formula.
+
+A generic function is a standard R function with a special body, usually containing only a call to UseMethod:
+```{r}
+linmod <- function(x, y) UseMethod("linmod")
+```
+
+To add a default method, we define a function called `linmod.default()`:
+```{r}
+linmod.default <- function(x, y)
+{
+    x <- as.matrix(x)
+    y <- as.numeric(y)
+    est <- linmodEst(x, y)
+    est$fitted.values <- as.vector(x %*% est$coefficients)
+    est$residuals <- y - est$fitted.values
+    est$call <- match.call()
+    class(est) <- "linmod"
+est }
+```
+
+This function tries to convert its first argument `x` to a matrix, `as.matrix()` will throw an error if the conversion is not successful, similarly for the conversion of `y` to a numeric vector. We then call our function for parameter estimation, and add fitted values, residuals and the function call to the results. Finally we set the class of the return object to "linmod".
+
+Defining the `print()` method for our class as:
+```{r}
+print.linmod <- function(x, ...)
+{
+    cat("Call:\n")
+    print(x$call)
+    cat("\nCoefficients:\n")
+    print(x$coefficients)
+}
+```
+makes it almost look like the real thing:
+```{r}
+x = cbind(Const=1, Bwt=cats$Bwt)
+y = cats$Hw
+mod1 <- linmod(x, y)
+mod1
+```
+
+Note that we have used the standard names "coefficients", "fitted.values" and "residuals" for the elements of our class "linmod". As a bonus on the side we get methods for several standard generic functions for free, because their default methods work for our class:
+```{r}
+coef(mod1)
+fitted(mod1)
+resid(mod1)
+```
+
+The notion of functions returning an object of a certain class is used extensively by the modelling functions of S. In many statistical packages you have to specify a lot of options controlling what type of output you want/need. In S you first fit the model and then have a set of methods to investigate the results (summary tables, plots, ...). The parameter estimates of a statistical model are typically summarized using a matrix with 4 columns: estimate, standard deviation, $z$ (or $t$ or . . . ) score and $p$-value. The summary method computes this matrix:
+```{r}
+summary.linmod <- function(object, ...)
+{
+    se <- sqrt(diag(object$vcov))
+    tval <- coef(object) / se
+    TAB <- cbind(Estimate = coef(object),
+                 StdErr = se,
+                 t.value = tval,
+                 p.value = 2*pt(-abs(tval), df=object$df))
+    res <- list(call=object$call,
+                coefficients=TAB)
+    class(res) <- "summary.linmod"
+res }
+```
+
+The utility function `printCoefmat()` can be used to print the matrix with appropriate rounding and some decoration:
+```{r}
+print.summary.linmod <- function(x, ...)
+{
+    cat("Call:\n")
+    print(x$call)
+    cat("\n")
+    printCoefmat(x$coefficients, P.value=TRUE, has.Pvalue=TRUE)
+}
+```
+
+The results is:
+```{r}
+summary(mod1)
+```
+
+Separating computation and screen output has the advantage, that we can use all values if needed for later computations, e.g., to obtain the $p$-values we can use:
+```{r}
+coef(summary(mod1))[,4]
+```
+
+## 4 S Formulas
+
+The unifying interface for selecting variables from a data frame for a plot, test or model are S formulas. The most common formula is of type:
+```
+y ~ x1+x2+x3
+```
+
+The central object that is usually created first from a formula is the:
+
+* `model.frame`, a data frame containing only the variables appearing in the formula, together with an interpretation of the formula in the  
+* `terms` attribute. It tells us whether there is a response variable (always the first column of the `model.frame`), an intercept, . . .
+
+The `model.frame` is then used to build the design matrix for the model and get the response. Our code shows the simplest handling of formulas, which however is already sufficient for many applications (and much better than no formula interface at all):
+```{r}
+linmod.formula <- function(formula, data=list(), ...)
+{
+    mf <- model.frame(formula=formula, data=data)
+    x <- model.matrix(attr(mf, "terms"), data=mf)
+    y <- model.response(mf)
+    est <- linmod.default(x, y, ...)
+    est$call <- match.call()
+    est$formula <- formula
+    est
+}
+```
+
+The above function is an example for the most common exception to the rule that all methods should have the same arguments as the generic and in the same order. By convention formula methods have arguments formula and data rather than `x` and `y`. The few lines of R code above give our model access to the wide variety of design matrices S formulas allow us to specify. E.g., to fit a model with main effects and an interaction term for body weight and sex we can use:
+```{r}
+head(cats)
+attach(cats)
+summary(linmod(Hwt~Bwt*Sex))
+```
+
+The last missing methods most statistical models in S have are a `plot()` and `predict()` method. For the latter a simple solution could be
+```{r}
+predict.linmod <- function(object, newdata=NULL, ...)
+{
+    if(is.null(newdata))
+      y <- fitted(object)
+    else{
+        if(!is.null(object$formula)){
+            ## model has been fitted using formula interface
+            x <- model.matrix(object$formula, newdata)
+        }
+        else{
+            x <- newdata
+}
+        y <- as.vector(x %*% coef(object))
+    }
+y }
+```
+which works for models fitted with either the default method (in which case newdata is assumed to be a matrix with the same columns as the original `x` matrix), or for models fitted using the formula method (in which case newdata will be a data frame). Note that `model.matrix()` can also be used directly on a formula and a data frame rather than first creating a `model.frame`.
+
+The formula handling in our small example is rather minimalistic, production code usually handles much more cases. We did not bother to think about treatment of missing values, weights, offsets, subsetting etc. To get an idea of more elaborate code for handling formulas, one can look at the beginning of function `lm()` in R.
+
+
+
+
+
+
+
+
+
+
+

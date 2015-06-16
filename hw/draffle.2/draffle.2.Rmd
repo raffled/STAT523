@@ -1,0 +1,79 @@
+Stat 523
+--------
+#### Doug Raffle (dcraffle@mix.wvu.edu)
+
+### Assignment 2: Functions
+
+#### Explain your code where appropriate.
+
+1. Create a function to perform a one-way analysis of variance. The input should be a list consisting of (possibly) named components, one for each group. The output should be list containing components for the between SS, the within SS, the between degrees of freedom, and the within degrees of freedom. 
+```{r}
+oneway <- function(z) {
+    #### Using computing formulas from Wearden
+    a <- length(z)
+    N <- length(unlist(z))
+    TT <- sum(unlist(z)^2)
+    A <- sum(sapply(z, function(x) sum(x)^2/length(x)))
+    CF <- sum(unlist(z))^2/N
+
+    ss.a <- A - CF ## within
+    ss.e <- TT - A ## between
+    df.a <- a - 1 
+    df.e <- N - a 
+
+    list(df.a = df.a, df.e = df.e, ss.a = ss.a, ss.e = ss.e)
+}
+```
+
+2. Create a function to summarize the output in a one-way ANOVA table, including the F test. The input is the output list in the previous question. The output should be one-way ANOVA table.
+```{r}
+oneway.table <- function(x) {
+    ss.t <- x$ss.a + x$ss.e
+    df.t <- x$df.a + x$df.e
+
+    ms.a <- x$ss.a/x$df.a
+    ms.e <- x$ss.e/x$df.e
+    F <- ms.a/ms.e
+    p <- pf(F, x$df.a, x$df.e, lower.tail = FALSE)
+
+    tab <- with(x, cbind(DF = c(df.a, df.e, df.t),
+                         SS = c(ss.a, ss.e, ss.t),
+                         MS = c(ms.a, ms.e, NA),
+                         F = c(F, NA, NA),
+                         "Pr(>F)" = c(p, NA, NA)))
+    rownames(tab) <- c("Among Groups", "Within Groups (error)", "Total")
+    cat("\nAnalysis of Variance Table:\n")
+    printCoefmat(tab, P.values=TRUE, has.Pvalue=TRUE, signif.stars=TRUE, na.print="")
+}
+```
+
+3. Your functions should be illustrated with the `coagulation` data set. The data consists of blood coagulation times for 24 animals randomly assigned to four different diets.
+```{r}
+library(faraway)
+data(coagulation)
+head(coagulation)
+by.diet <- with(coagulation, split(coag, diet))
+(diet.aov <- oneway(by.diet))
+```
+We start by splitting the coagulation measurements into groups by
+diet. From here, we see that the `oneway` function extracts the
+necessary sums of squares and degrees of freedom.
+
+From here, we can call `oneway.table` on the resulting object to
+create an ANOVA table and view the results.
+
+```{r}
+oneway.table(diet.aov)
+```
+
+We can see that there is an $F$ statistic of $13.571$ on $3$ and $20$
+degrees of freedom, resulting in a highly significant $p-$value.  This
+leads us to conclude that there is a strong evidence that at least one
+of the diet factors affects the mean coagulation time.
+
+For verification, we can see that this code lines up with `R`'s `aov`
+function:
+
+```{r}
+summary(aov(coag ~ diet, coagulation))
+```
