@@ -190,6 +190,7 @@ add <- function(x) {
 adders <- lapply(1:10, add)
 adders
 adders[[1]](10)
+adders[[2]](10)
 adders[[10]](10)
 ```
 

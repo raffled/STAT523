@@ -42,6 +42,7 @@ We can start applying FP ideas by writing a function that fixes the missing valu
 fix_missing <- function(x) {
   x[x == -99] <- NA
   x
+####
 }
 df$a <- fix_missing(df$a)
 df$b <- fix_missing(df$b)
