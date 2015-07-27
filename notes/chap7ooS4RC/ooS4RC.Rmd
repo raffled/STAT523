@@ -1,0 +1,256 @@
+---
+title: 'Chapter 7: OO S3 + RC'
+author: "jharner"
+date: "June 7, 2015"
+output: html_document
+---
+
+## 7.3 S4
+
+S4 works in a similar way to S3, but it adds formality and rigour. Methods still belong to functions, not classes, but:
+
+* Classes have formal definitions which describe their fields and inheritance structures (parent classes).  
+* Method dispatch can be based on multiple arguments to a generic function, not just one.
+* There is a special operator, `@`, for extracting slots (aka fields) from an S4 object.
+
+All S4 related code is stored in the `methods` package. This package is always available when you’re running R interactively, but may not be available when running R in batch mode. For this reason, it’s a good idea to include an explicit `library(methods)` whenever you’re using S4.
+
+### 7.3.1 Recognising objects, generic functions, and methods
+
+Recognising S4 objects, generics, and methods is easy. You can identify an S4 object because `str()` describes it as a “formal” class, `isS4()` returns TRUE, and `pryr::otype()` returns “S4”. S4 generics and methods are also easy to identify because they are S4 objects with well defined classes.
+
+There aren’t any S4 classes in the commonly used base packages (`stats`, `graphics`, `utils`, `datasets`, and `base`), so we’ll start by creating an S4 object from the built-in `stats4` package, which provides some S4 classes and methods associated with maximum likelihood estimation:
+```{r}
+library(stats4)
+library(pryr)
+
+# From example(mle)
+y <- c(26, 17, 13, 12, 20, 5, 9, 8, 5, 4, 8)
+nLL <- function(lambda) - sum(dpois(y, lambda, log = TRUE))
+fit <- mle(nLL, start = list(lambda = 5), nobs = length(y))
+
+# An S4 object
+isS4(fit)
+otype(fit)
+
+# An S4 generic
+isS4(nobs)
+ftype(nobs)
+
+# Retrieve an S4 method, described later
+mle_nobs <- method_from_call(nobs(fit))
+isS4(mle_nobs)
+ftype(mle_nobs)
+```
+
+Use `is()` with one argument to list all classes that an object inherits from. Use `is()` with two arguments to test if an object inherits from a specific class.
+```{r}
+is(fit)
+is(fit, "mle")
+```
+
+You can get a list of all S4 generics with `getGenerics()`, and a list of all S4 classes with `getClasses()`. This list includes shim classes for S3 classes and base types. You can list all S4 methods with `showMethods()`, optionally restricting selection either by generic or by class (or both). It’s also a good idea to supply `where = search()` to restrict the search to methods available in the global environment.
+
+### 7.3.2 Defining classes and creating objects
+
+In S3, you can turn any object into an object of a particular class just by setting the class attribute. S4 is much stricter: you must define the representation of a class with `setClass()`, and create a new object with `new()`. You can find the documentation for a class with a special syntax: `class?className`, e.g., `class?mle`.
+
+An S4 class has three key properties:
+
+* A name: an alpha-numeric class identifier. By convention, S4 class names use UpperCamelCase.  
+* A named list of slots (fields), which defines slot names and permitted classes. For example, a person class might be represented by a character name and a numeric age: `list(name = "character", age = "numeric")`.  
+* A string giving the class it inherits from, or, in S4 terminology, that it contains. You can provide multiple classes for multiple inheritance, but this is an advanced technique which adds much complexity.
+
+In slots and contains you can use S4 classes, S3 classes registered with `setOldClass()`, or the implicit class of a base type. In slots you can also use the special class `ANY` which does not restrict the input.
+
+S4 classes have other optional properties like a validity method that tests if an object is valid, and a prototype object that defines default slot values. See `?setClass` for more details.
+
+The following example creates a `Person` class with fields `name` and `age`, and an `Employee` class that inherits from `Person`. The `Employee` class inherits the slots and methods from the `Person`, and adds an additional slot, `boss`. To create objects we call `new()` with the name of the class, and name-value pairs of slot values.
+```{r}
+setClass("Person",
+  slots = list(name = "character", age = "numeric"))
+setClass("Employee",
+  slots = list(boss = "Person"),
+  contains = "Person")
+
+alice <- new("Person", name = "Alice", age = 40)
+john <- new("Employee", name = "John", age = 20, boss = alice)
+```
+
+Most S4 classes also come with a constructor function with the same name as the class: if that exists, use it instead of calling `new()` directly.
+
+To access slots of an S4 object use `@` or `slot()`:
+```{r}
+alice@age
+slot(john, "boss")
+```
+
+(`@` is equivalent to `$`, and `slot()` to `[[`.)
+
+If an S4 object contains (inherits from) an S3 class or a base type, it will have a special  `.Data` slot which contains the underlying base type or S3 object:
+```{r}
+setClass("RangedNumeric",
+  contains = "numeric",
+  slots = list(min = "numeric", max = "numeric"))
+rn <- new("RangedNumeric", 1:10, min = 1, max = 10)
+rn@min
+rn@.Data
+```
+
+### 7.3.3 Creating new methods and generics
+
+S4 provides special functions for creating new generics and methods. `setGeneric()` creates a new generic or converts an existing function into a generic. `setMethod()` takes the name of the generic, the classes the method should be associated with, and a function that implements the method. For example, we could take `union()`, which usually just works on vectors, and make it work with data frames:
+```{r}
+setGeneric("union")
+setMethod("union",
+  c(x = "data.frame", y = "data.frame"),
+  function(x, y) {
+    unique(rbind(x, y))
+  }
+)
+```
+
+If you create a new generic from scratch, you need to supply a function that calls `standardGeneric()`:
+```{r}
+setGeneric("myGeneric", function(x) {
+  standardGeneric("myGeneric")
+})
+```
+
+`standardGeneric()` is the S4 equivalent to `UseMethod()`.
+
+### 7.3.4 Method dispatch
+
+If an S4 generic dispatches on a single class with a single parent, then S4 method dispatch is the same as S3 dispatch. The main difference is how you set up default values: S4 uses the special class `ANY` to match any class and “missing” to match a missing argument. Like S3, S4 also has group generics, documented in `?S4groupGeneric`, and a way to call the “parent” method, `callNextMethod()`.
+
+Method dispatch becomes considerably more complicated if you dispatch on multiple arguments, or if your classes use multiple inheritance. The rules are described in `?Methods`, but they are complicated and it’s difficult to predict which method will be called. For this reason, I strongly recommend avoiding multiple inheritance and multiple dispatch unless absolutely necessary.
+
+Finally, there are two methods that find which method gets called given the specification of a generic call:
+```{r}
+# From methods: takes generic name and class names
+selectMethod("nobs", list("mle"))
+
+# From pryr: takes an unevaluated function call
+method_from_call(nobs(fit))
+```
+
+## 7.4 RC
+
+Reference classes (or RC for short) are the newest OO system in R. They were introduced in version 2.12. They are fundamentally different to S3 and S4 because:
+
+* RC methods belong to objects, not functions  
+* RC objects are mutable: the usual R copy-on-modify semantics do not apply  
+
+These properties make RC objects behave more like objects do in most other programming languages, e.g., Python, Ruby, Java, and C#. Reference classes are implemented using R code: they are a special S4 class that wraps around an environment.
+
+### 7.4.1 Defining classes and creating objects
+
+Since there aren’t any reference classes provided by the base R packages, we’ll start by creating one. RC classes are best used for describing stateful objects, objects that change over time, so we’ll create a simple class to model a bank account.
+
+Creating a new RC class is similar to creating a new S4 class, but you use `setRefClass()` instead of `setClass()`. The first, and only required argument, is an alphanumeric name. While you can use `new()` to create new RC objects, it’s good style to use the object returned by `setRefClass()` to generate new objects.
+```{r}
+Account <- setRefClass("Account")
+Account$new()
+```
+
+`setRefClass()` also accepts a list of name-class pairs that define class fields (equivalent to S4 slots). Additional named arguments passed to `new()` will set initial values of the fields. You can get and set field values with `$`:
+```{r}
+Account <- setRefClass("Account",
+  fields = list(balance = "numeric"))
+
+a <- Account$new(balance = 100)
+a$balance
+a$balance <- 200
+a$balance
+```
+
+Instead of supplying a class name for the field, you can provide a single argument function which will act as an accessor method. This allows you to add custom behaviour when getting or setting a field. See `?setRefClass` for more details.
+
+Note that RC objects are mutable, i.e., they have reference semantics, and are not copied-on-modify:
+```{r}
+b <- a
+b$balance
+a$balance <- 0
+b$balance
+```
+
+For this reason, RC objects come with a copy() method that allow you to make a copy of the object:
+```{r}
+c <- a$copy()
+c$balance
+a$balance <- 100
+c$balance
+```
+
+An object is not very useful without some behaviour defined by methods. RC methods are associated with a class and can modify its fields in place. In the following example, note that you access the value of fields with their name, and modify them with `<<-`. You’ll learn more about `<<-` in Environments.
+```{r}
+Account <- setRefClass("Account",
+  fields = list(balance = "numeric"),
+  methods = list(
+    withdraw = function(x) {
+      balance <<- balance - x
+    },
+    deposit = function(x) {
+      balance <<- balance + x
+    }
+  )
+)
+```
+
+You call an RC method in the same way as you access a field:
+```{r}
+a <- Account$new(balance = 100)
+a$deposit(100)
+a$balance
+```
+
+The final important argument to setRefClass() is contains. This is the name of the parent RC class to inherit behaviour from. The following example creates a new type of bank account that returns an error preventing the balance from going below 0.
+```{r}
+NoOverdraft <- setRefClass("NoOverdraft",
+  contains = "Account",
+  methods = list(
+    withdraw = function(x) {
+      if (balance < x) stop("Not enough money")
+      balance <<- balance - x
+    }
+  )
+)
+accountJohn <- NoOverdraft$new(balance = 100)
+accountJohn$deposit(50)
+accountJohn$balance
+# accountJohn$withdraw(200)
+```
+
+All reference classes eventually inherit from `envRefClass`. It provides useful methods like `copy()`, `callSuper()` (to call the parent field), `field()` (to get the value of a field given its name), `export()` (equivalent to as()), and `show()` (overridden to control printing).
+
+### 7.4.2 Recognising objects and methods
+
+You can recognise RC objects because they are S4 objects (`isS4(x)`) that inherit from “refClass” (`is(x, "refClass")`). `pryr::otype()` will return “RC”. RC methods are also S4 objects, with class `refMethodDef`.
+
+### 7.4.3 Method dispatch
+
+Method dispatch is very simple in RC because methods are associated with classes, not functions. When you call `x$f()`, R will look for a method `f` in the class of `x`, then in its parent, then its parent’s parent, and so on. From within a method, you can call the parent method directly with `callSuper(...)`.
+
+## 7.5 Picking a system
+
+Three OO systems is a lot for one language, but for most R programming, S3 suffices. In R you usually create fairly simple objects and methods for pre-existing generic functions like `print()`, `summary()`, and `plot()`. S3 is well suited to this task, and the majority of OO code that I have written in R is S3. S3 is a little quirky, but it gets the job done with a minimum of code.
+
+If you are creating more complicated systems of interrelated objects, S4 may be more appropriate. A good example is the `Matrix` package by Douglas Bates and Martin Maechler. It is designed to efficiently store and compute with many different types of sparse matrices. The package is well written and well commented, and the accompanying vignette (`vignette("Intro2Matrix", package = "Matrix")`) gives a good overview of the structure of the package. S4 is also used extensively by Bioconductor packages, which need to model complicated interrelationships between biological objects. Bioconductor provides many good resources for learning S4. If you’ve mastered S3, S4 is relatively easy to pick up; the ideas are all the same, it is just more formal, more strict, and more verbose.
+
+If you’ve programmed in a mainstream OO language, RC will seem very natural. But because they can introduce side effects through mutable state, they are harder to understand. For example, when you usually call `f(a, b)` in R you can assume that `a` and `b` will not be modified. But if `a` and `b` are RC objects, they might be modified in the place. Generally, when using RC objects you want to minimise side effects as much as possible, and use them only where mutable states are absolutely required. The majority of functions should still be “functional”, and free of side effects. This makes code easier to reason about and easier for other R programmers to understand.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

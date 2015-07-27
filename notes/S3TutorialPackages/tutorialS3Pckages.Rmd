@@ -1,0 +1,168 @@
+---
+title: "S3 Tutorial Packages"
+author: "jharner"
+date: "July 12, 2015"
+output: html_document
+---
+
+## 5 R Packages
+
+
+Now that we have code that does useful things and has a nice user interface, we may want to share our code with other people, or simply make it easier to use ourselves. There are two popular ways of starting a new package:  
+
+1. Load all functions and data sets you want in the package into a clean R session, and run `package.skeleton()`. The objects are sorted into data and functions, skeleton help files are created for them using `prompt()` and a `DESCRIPTION` file is created. The function then prints out a list of things for you to do next.  
+2. Create it manually, which is usually faster for experienced developers.  
+
+### 5.1 Structure of a package
+
+The extracted sources of an R package are simply a directory somewhere on your hard drive. The directory has the same name as the package and the following contents (all of which are described in more detail below):  
+
+* A file named `DESCRIPTION` with descriptions of the package, author, and license conditions in a structured text format that is readable by computers and by people.    
+* A `man/` subdirectory of documentation files.  
+* An `R/` subdirectory of R code.  
+* A `data/` subdirectory of datasets.  
+
+Less commonly it contains:  
+
+* A `src/` subdirectory of C, Fortran or C++ source.  
+* `tests/` for validation tests.  
+* `exec/` for other executables (e.g., Perl or Java).  
+* `inst/` for miscellaneous other stuff. The contents of this directory are completely copied to the installed version of a package.
+* A `configure` script to check for other required software or handle differences between systems.  
+
+All but the `DESCRIPTION` file are optional, though any useful package will have `man/` and at least one of `R/` and `data/`.
+
+### 5.2 Starting a package for linear regression
+
+To start a package for our R code all we have to do is run function `package.skeleton()` and pass it the name of the package we want to create plus a list of all source code files. If no source files are given, the function will use all objects available in the user workspace. Assuming that all functions defined above are collected in a file called `linmod.R`, the corresponding call is:
+```
+package.skeleton(name="linmod", code_files="linmod.R")
+```
+which already tells us what to do next. It created a directory called `linmod` in the current working directory. R also created subdirectories `man` and `R`, copied the R code into subdirectory R and created stumps for help file for all functions in the code.
+
+ The code is already in place, so all we need to do is edit the `DESCRIPTION` file and write some help pages.
+ 
+### 5.3 The package DESCRIPTION file
+
+An appropriate DESCRIPTION for our package is:
+```
+Package: linmod
+Title: Linear Regression
+Version: 1.0
+Date: 2008-05-13
+Author: Friedrich Leisch
+Maintainer: Friedrich Leisch <Friedrich.Leisch@R-project.org>
+Description: This is a demo package for the tutorial "Creating R
+  Packages" to Compstat 2008 in Porto.
+Suggests: MASS
+License: GPL-2
+```
+
+The file is in so called Debian-control-file format, which was invented by the [Debian Linux distribution](http://www.debian.org) to describe their package.
+
+Entries are of form
+```
+Keyword: Value
+```
+with the keyword always starting in the first column, continuation lines start with one ore more space characters. The `Package`, `Version`, `License`, `Description`, `Title`, `Author`, and `Maintainer` fields are mandatory, the remaining fields (`Date`, `Suggests`, ...) are optional.
+
+* The `Package` and `Version` fields give the name and the version of the package, respectively. The name should consist of letters, numbers, and the dot character and start with a letter. The version is a sequence of at least two (and usually three) non-negative integers separated by single dots or dashes.  
+* The `Title` should be no more than 65 characters, because it will be used in various package listings with one line per package.  
+* The `Author` field can contain any number of authors in free text format.  
+* The `Maintainer` field should contain only one name plus a valid email address (similar to the “corresponding author” of a paper).  
+* The `Description` field can be of arbitrary length.  
+* The `Suggests` field in our example means that some code in our package uses functionality from package MASS, in our case we will use the `cats` data in the example section of help pages. A stronger form of dependency can be specified in the optional `Depends` field listing packages which are necessary to run our code.  
+* The `License` can be free text, if you submit the package to CRAN or Bioconductor and use a standard license, we strongly prefer that you use a standardized abbreviation like GPL-2 which stands for “GNU General Public License Version 2”. A list of license abbreviations R understands is given in the manual “Writing R Extensions” (R Development Core Team (2008b)). The manual also contains the full documentation for all possible fields in package `DESCRIPTION` files.  
+
+The above is only a minimal example, much more meta-information about a package as well as technical details for package installation can be stated.
+
+### 5.4 R documentation files
+
+The sources of R help files are in R documentation format and have extension `.Rd`. The format is similar to LATEX, however processed by R and hence not all LATEX commands are available, in fact there is only a very small subset. The documentation files can be converted into HTML, plain text, GNU info format, and LATEX.
+
+A joint help page has the name of the help page, then aliases for all topics the page documents. The title should again be only one line because it is used for the window title in HTML browsers. The descriptions should be only 1–2 paragraphs, if more text is needed it should go into the optional details section not shown in the example. Regular R users will immediately recognize most sections of `Rd` files from reading other help pages.
+
+The usage section should be plain R code with additional markup for methods:  
+
+* For regular functions it is the full header with all arguments and their default values: Copy & paste from the code and remove `<- function`.  
+* For S3 methods, use the special markup `\method{generic}{class}(arguments)`
+which will print as `generic(arguments)` but makes the true name and purpose available for checking.  
+* For data sets it is typically simply `data(name)`.
+
+The examples section should contain executable R code, and automatically running the code is part of checking a package. There are two special markup commands for the examples:  
+
+* `dontrun`: Everything inside `\dontrun{}` is not executed by the tests or `example()`. This is useful, e.g., for interactive functions, functions accessing the Internet etc.. Do not misuse it to make life easier for you by giving examples which cannot be executed.  
+* `dontshow`: Everything inside `\dontshow{}` is executed by the tests, but not shown to the user in the help page. This is meant for additional tests of the functions documented.
+
+There are other possible sections, and ways of specifying equations, URLs, links to other R documentation, and more. The manual “Writing R Extensions” has the full list of all Rd commands. The packaging system can check that all objects are documented, that the usage corresponds to the actual definition of the function, and that the examples will run. This enforces a minimal level of accuracy on the documentation.
+
+There are two “special” help files:
+
+* `pkgname-package`: it should be a short overview, to give a reader unfamiliar with the package enough information to get started. More extensive documentation is better placed into a package vignette (and referenced from this page), or into individual man pages for the functions, datasets, or classes. This file can be used to override the default contents of `help(package="pkgname")`.  
+* `pkgname-interna`l: Popular name for a help file collecting functions which are not part of the package application programming interface (API), should not directly be used by the user and hence are not documented. Only there to make `R CMD check` happy; you really should use a name space instead.
+
+For our simple package it makes no sense to create `linmod-package.Rd`, because there is only one major function anyway. With `linmodEst` we do have one internal function in our code, which is not intended to be used at the prompt. One way to document this fact is to create a file `linmod-internal.Rd`, include an alias for `linmodEst` and say that this function is for internal usage only.
+
+### 5.5 Data in packages
+
+Using example data from recommended packages like `MASS` is no problem, because recommended packages are part of any R installation anyway. In case you want to use your own data, simply create a subdirectory `data` in your package, write the data to disk using function `save()` and copy the resulting files (with extension `.rda` or `.RData`) to the `data` subdirectory. Typing `data("foo")` in R will look for files with name `foo.rda` or `foo.RData` in all attached packages and `load()` the first it finds. To get a help file skeleton for a data set, simply type `prompt("foo")` when `foo` is a data object present in your current R session. Data in packages can be in other formats (text, csv, S code, . . . ), see again “Writing R Extensions” for details.
+
+### 5.6 Other package contents
+
+The aim of this tutorial is to give an introduction to creating R packages, hence we have deliberately left out several possibilities of things that can also go into a package. Many packages contain code in compilable languages like C or Fortran for number crunching. In addition to `Rd` files, package authors can write and include additional user guides, preferably as PDF files. If user guides are written using Sweave, they are called package vignettes, see also `help("vignette")`. Name spaces allow fine control over which functions a user shall be able to see and which are only internal. A `CITATION` file can be used to include references to literature connected to the package, the contents of the file can be accessed from within R using `citation("pkgname")`.
+
+## 6 Installation and Checking
+
+In order to install a source package, several additional tools (on top of a working R installation) are necessary, e.g., perl to process the Rd files.
+A Unix machine should have everything needed, but a regular Windows machine will not: Read the section on packages in the “R Windows FAQ” on what to install.
+
+Once all tools are in place, there are three commands of form
+```
+  R CMD command packagename
+```
+available to process the package:  
+
+* `INSTALL`: installs the package into a library and makes it available for usage in R.  
+* `check`: runs a battery of tests on the package.  
+* `build`: removes temporary files from the source tree of the package and packs everything into an archive file.
+
+All should be executed in the directory containing the source tree of the package. To install the package open a shell and go to the directory containing the package tree (i.e., the directory containing `linmod`, not into `linmod` itself). The package can be installed using a command of form
+```
+R CMD INSTALL -l /path/to/library linmod
+```
+
+R installs the source code, converts the help pages from Rd to text, HTML and latex, and extracts the examples.
+
+`R CMD check` helps you do quality assurance on packages:
+
+* The directory structure and the format of `DESCRIPTION` are checked.  
+* The documentation is converted into text, HTML, and LATEX, and run through latex if available.  
+* The examples are run.  
+* Any tests in the tests/ subdirectory are run.  
+* Undocumented objects, and those whose usage and definition disagree are reported.  
+
+`R CMD build` will create a compressed package file from your package directory. It does this in a reasonably intelligent way, omitting object code, emacs backup files, and other junk. The resulting file is easy to transport across systems and can be `INSTALL`ed without decompressing. R CMD build makes source packages by default. Binary packages are created by
+
+* `INSTALL`ing the source package and then making a zip file of the installed version, or  
+* running `R CMD build --binary`.
+
+For our package building a source package looks like
+```
+R CMD build linmod
+```
+
+and results in a file `linmod_1.0.tar.gz` which we can pass to other people.
+If you have a package that does something useful and is well-tested and documented, you might want other people to use it, too. Contributed packages have been very important to the success of R (and before that of S). Packages can be submitted to CRAN by ftp. Make sure to run `R CMD check` with the latest version of R before submission. The CRAN maintainers will make sure that the package passes `CMD check`. Submit only the package sources, binaries are built automatically by designated platform maintainers.
+
+## 7 Summary
+
+In this paper we have given step-by-step instructions on how to write code in R which conforms to standards for statistical models and hence is intuitive to use. Object oriented programming allows the usage of common generic functions like `summary()` or `predict()` for a wide range of different model classes. Using S formulas we can create design matrices with possibly complex interaction and nesting structures. We then have turned a loose collection of functions into a regular R package, which can easily be documented, checked and distributed to other users. The tutorial is meant as a starting point only. The R packaging system has much more features than we have covered, most of which are not necessary when first creating an R package.
+
+
+
+
+
+
+
+
+

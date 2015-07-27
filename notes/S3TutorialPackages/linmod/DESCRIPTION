@@ -1,0 +1,11 @@
+Package: linmod
+Type: Package
+Title: Linear Regression
+Version: 1.0
+Date: 2015-07-12
+Author: Friedrich Leisch
+Maintainer: Friedrich Leisch <Friedrich.Leisch@R-project.org>
+Description: This is a demo package for the tutorial "Creating R Packages" 
+  to Compstat 2008 in Porto.
+Suggests: MASS
+License: GPL-2

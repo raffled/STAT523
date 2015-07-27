@@ -1,0 +1,86 @@
+Stat 523
+--------
+
+### Assignment 4: One-Way S3 Implementation
+
+#### Explain your code where appropriate.
+
+You should turn in this .Rmd file as well as the corresponding .html file. I should be able to execute the .Rmd file. You may want to develop the code using a separate .R file. You may want to add arguments to some of the functions below, e.g., alpha = 0.05 for testing.
+
+Develop an S3 class to estimate the relevant parameters in a one-way AOV with possibly unequal sample sizes (e.g., see Dowdy and Wearden, Statistics for Research, Wiley). You can use some of the code from Assignment 2.
+
+#### 1. Develop a default method, **oneway.default**,  for the  generic function **oneway**.
+```{r oneway.default}
+oneway <- function(z, ...) UseMethod("oneway")
+
+oneway.default <- function(z, ...) {
+## Your code here
+}
+```
+The *z* argument for **oneway.default** should be a list of (possibly) named components, one for each sample. The computations for the one-way ANOVA should be done in **oneway.default**.
+
+#### 2. This method uses the more standard input of a factor representing groups (or samples) and a numeric response.
+```{r oneway.factor}
+oneway.factor <- function(z, y, ...) {
+## Your code here
+}
+```
+The *z* argument should be the factor with levels representing samples. The factor should be used to deconstruct *y*, the response, into a list as in the default.
+
+#### 3. The model formula is the standard for R models, but do not use **model.matrix** to implement **oneway**.
+```{r oneway.formula}
+oneway.formula <- function(formula, data=list(), ...) {
+## Your code here
+}
+```
+You might want to extract the factor term and the response from the **model.frame** and then call **oneway.factor**, which in turn calls **oneway.default**.
+
+#### 4. The default **print** method should be short and provide essential information.
+```{r print.oneway}
+print.oneway <- function(x, ...) {
+  
+## Your code here
+}
+```
+
+#### 5. The summary method should create a summary object---not print directly.
+```{r summary.oneway}
+summary.oneway <- function(object, ...) {
+## Your code here
+}
+```
+The argument is a **oneway** object. The summary object should include a component representing an AOV table, e.g., see Dowdy and Wearden. You might want to decide whether objects of class *summary.oneway* inherit from the class *oneway*.
+
+#### 6. The print method for the summary object should provide more detailed information about the summary object.
+```{r print.summary.oneway}
+print.summary.oneway <- function(x, ...) {
+## Your code here
+}
+```
+The  AOV table should be formatted nicely. The least squares means should also be formated and printed.
+
+#### 7. Implement Fisher's LSD multiple comparison procedure for your oneway.
+```{r lsmeans.oneway}
+lsmeans.oneway <- function(object, ...) {
+## Your code here
+}
+```
+The argument is a *oneway* object, which should include the least-squares means as a component. Fisher's LSD should be computed and formatted nicely.
+
+#### 8. A plot generic function should be implemented for *oneway* objects.
+```{r plot.oneway}
+plot.oneway <- function(x, ...) {
+## Your code here
+}
+```
+The plot should compare the distributions of the groups in a side-by-side manner.
+
+#### 9. Your S3 class implementation should be illustrated with the *coagulation* data set. The data consists of blood coagulation times for 24 animals randomly assigned to four different diets.
+```{r example}
+library(faraway)
+data(coagulation)
+coagulation[1:4,]
+## Your implementation code here
+```
+You should provide brief explanations of the output along with the output, which implies that you may want multiple chucks of R code interspersed with markdown.
+
