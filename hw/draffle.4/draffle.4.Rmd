@@ -5,6 +5,8 @@ Stat 523
 
 #### Explain your code where appropriate.
 
+#### Doug Raffle (dcraffle@mix.wvu.edu)
+
 You should turn in this .Rmd file as well as the corresponding .html file. I should be able to execute the .Rmd file. You may want to develop the code using a separate .R file. You may want to add arguments to some of the functions below, e.g., alpha = 0.05 for testing.
 
 Develop an S3 class to estimate the relevant parameters in a one-way AOV with possibly unequal sample sizes (e.g., see Dowdy and Wearden, Statistics for Research, Wiley). You can use some of the code from Assignment 2.
@@ -205,11 +207,11 @@ summary(coag.oneway)
 ```
 
 Finally, we can examine Fisher's LSD table and visualize it using the
-plot function.
+plot function.  
 
 ```{r}
 lsmeans(coag.oneway)
-plot(coag.oneway)
+plot(coag.oneway, xlab = "Diet", ylab = "Coagulation", main = "Coagulation by Diet")
 ```
 
 You should provide brief explanations of the output along with the output, which implies that you may want multiple chucks of R code interspersed with markdown.
