@@ -1,0 +1,51 @@
+## Statistics 523  
+
+### Assignment 3: One-Way S3 Package
+
+The file created from `R CMD build` (or similar approaches using `devtools` or RStudio shortcuts) should be submitted along with this file and its pdf output. I should be able to install the package---perhaps from GitHub.
+
+**Extra credit of up to 10 points**: Use `git` for  version control and publish your results on GitHub. If GitHub is used, the link should be provided.
+        	
+#### 1. Start development of a package called `oneway` using the RStudio approach, i.e., start with a project. This initial version should be derived from your S3 classes developed for assignment 4 in the file `oneway.R` or similar files. 
+
+```
+List the R code here.
+```
+	
+#### 2. Edit the DESCRIPTION file.
+
+```
+List the DESCRIPTION file here.
+```
+
+#### 3. Generate a NAMESPACE file using `roxygen2`. That is, export (or less likely import) appropriate functions or S3 methods.
+
+```
+List the NAMESPACE file here.
+```
+
+#### 4. Develop a help file called `oneway.Rd`, or similar files, which contains the help information for all the functions defined in `oneway.R`, or in similar files. The help file(s) should be placed in a subdirectory called `man`. You should use `roxygen2` for this process.
+
+#### 5. Create an image file from the `coagulation` data set using `save()` and place `coagulation.rda` in the subdirectory `data`.
+```{r}
+library(faraway)
+data(coagulation)
+# R code here.
+```
+
+#### 6. Develop a help file called `coagulation.Rd`, which contains the help information for the `coagulation` data set. This file should be placed in the `man` subdirectory. Again use `roxygen2`.
+
+#### 7. Build the package using the `R CMD build` and the `R CMD check` commands or by RStudio commands or `devtools`. The process should be iterated until bugs are found and corrected. You can use the debugging tools you have learned. Once complete, install the package.
+	
+#### 8. Show the output from the help files using: `library(oneway)`, `help(oneway)`, help for specific functions, and `help(coagulation)`, etc.
+```{r oneway.help}
+# library(oneway)
+# R code here 
+```
+The help files should provide all relevant information.
+
+#### 9. Illustrate your functions using:  
+```{r oneway.example}
+# example(oneway)
+```
+The example should illustrate all aspects of your code.
