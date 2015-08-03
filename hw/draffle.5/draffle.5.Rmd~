@@ -1,0 +1,303 @@
+## Statistics 523  
+
+### Assignment 3: One-Way S3 Package
+#### Doug Raffle (dcraffle@mix.wvu.edu)
+
+The file created from `R CMD build` (or similar approaches using `devtools` or RStudio shortcuts) should be submitted along with this file and its pdf output. I should be able to install the package---perhaps from GitHub.
+
+**Extra credit of up to 10 points**: Use `git` for  version control and publish your results on GitHub. If GitHub is used, the link should be provided.
+        	
+#### 1. Start development of a package called `oneway` using the RStudio approach, i.e., start with a project. This initial version should be derived from your S3 classes developed for assignment 4 in the file `oneway.R` or similar files. 
+
+```{r eval = FALSE}
+#' Perform a oneway analysis of variance
+#'
+#' @param z A list of responses grouped by factor level
+#' @param ... Addition arguments used by other S3 methods
+#'
+#' @seealso \code{\link{oneway.factor}}, \code{\link{oneway.formula}},
+#' \code{\link{summary.oneway}}, \code{\link{plot.oneway}}, \code{\link{lsmeans}}
+#' @examples
+#' data(coagulation)
+#' attach(coagulation)
+#' oneway(split(coag, diet))
+#' oneway(diet, coag)
+#' oneway(coag~diet)
+#' summary(oneway(coag~diet))
+#'
+#' lsmeans(oneway(coag~diet))
+#' plot(oneway(coag~diet))
+#'
+#' @export
+oneway <- function(z, ...) UseMethod("oneway")
+
+#' @export
+oneway.default <- function(z, ...) {
+    ## Make sure we're the right data structure
+    if(!is.list(z) | is.data.frame(z)){
+        stop("data structure is not one of:\nlist, factor & vector, or formula")
+    }
+    ## computing formulas
+    a <- length(z)
+    N <- length(unlist(z))
+    TT <- sum(unlist(z)^2)
+    A <- sum(sapply(z, function(x) sum(x)^2/length(x)))
+    CF <- sum(unlist(z))^2/N
+    ## computes SS's and DF's
+    ss.a <- A - CF ## within
+    ss.e <- TT - A ## between
+    df.a <- a - 1
+    df.e <- N - a
+    ## get LS Means & sample sizes
+    ybar.vec <- unlist(lapply(z, mean))
+    n.vec <- unlist(lapply(z, length))
+    ## find group names
+    if(is.null(names(z))){
+        groups <- as.character(1:length(z))
+    }
+    else{
+        groups <- names(z)
+    }
+    names(ybar.vec) <- groups
+    ## create object, add class, & return
+    res <- list(df = c(df.a, df.e), SS = c(ss.a, ss.e),
+                groups = groups, call = match.call(), data = z,
+                ls.means = ybar.vec, n.vec = n.vec, N = N, a = a)
+    class(res) <- "oneway"
+    return(res)
+}
+
+#' oneway.factor
+#'
+#' S3 method for \code{\link{oneway}} using a response vector and factor
+#'
+#' @param z A factor of levels for each observation
+#' @param y A vector of responses
+#' @param ... Addition arguments used by other S3 methods
+#'
+#' @seealso \code{link{oneway}}
+#'
+#' @export
+oneway.factor <- function(z, y, ...) {
+    foo <- oneway.default(split(y, z))
+    foo$call <- match.call()
+    foo
+}
+
+#' oneway.formula
+#'
+#' An S3 method for \code{\link{oneway}} for formulas.
+#'
+#' @param formula A formula of the form \code{response~factor}
+#' @param data An (optional) data frame used by the formula.
+#' @param ... Addition arguments used by other S3 methods
+#'
+#' @seealso \code{\link{oneway}}
+#'
+#' @export
+oneway.formula <- function(formula, data=list(), ...) {
+    mf <- model.frame(formula, data)
+    foo <- oneway.factor(mf[,2], mf[,1])
+    foo$call <- match.call()
+    foo
+}
+
+#' @export
+print.oneway <- function(x, ...) {
+   print(x$call)
+   cat("\nWithin SS:", x$SS[1], "on", x$df[1],
+       "degrees of freedom.\n")
+   cat("Between SS:", x$SS[2], "on", x$df[2],
+       "degrees of freedom.\n")
+}
+
+
+#' summary.oneway
+#'
+#' Creates an Analysis of Variance table for a \code{oneway} object
+#'
+#' @param object An object of class \code{oneway}
+#' @param ... Addition arguments used by other S3 methods
+#'
+#' @export
+summary.oneway <- function(object, ...) {
+    attach(object)
+    ## Get total SS & df
+    ss.t <- SS[1] + SS[2]
+    df.t <- df[1] + df[2]
+    ## Calculate mean squares
+    ms.a <- SS[1]/df[1]
+    ms.e <- SS[2]/df[2]
+    ## get F stat & p-val
+    F <- ms.a/ms.e
+    p <- pf(F, df[1], df[2], lower.tail = FALSE)
+
+    ## construct AOV table
+    tab <- with(object, cbind(DF = c(df, df.t),
+                         SS = c(SS, ss.t),
+                         MS = c(ms.a, ms.e, NA),
+                         F = c(F, NA, NA),
+                         "Pr(>F)" = c(p, NA, NA)))
+    rownames(tab) <- c("Among Groups", "Within Groups (error)",
+                       "Total")
+    res <- list(call=call, tab=tab, groups=groups, ls.means=ls.means,
+                P = p, MS = c(ms.a, ms.e), n.vec = n.vec, N = N, a = a)
+    class(res) <- "summary.oneway"
+    detach(object)
+    return(res)
+}
+
+#' @export
+print.summary.oneway <- function(x, ...) {
+    ## function call
+    cat("Call:\n\t")
+    print(x$call)
+    ## LS means
+    cat("\nMeans:\n")
+    print(x$ls.means)
+    cat("\n")
+    # AOV Table
+    cat("\nAnalysis of Variance Table:\n")
+    printCoefmat(x$tab, P.values=TRUE, has.Pvalue=TRUE,
+                 signif.stars=TRUE, na.print="")
+}
+
+#' Creates a side-by-side boxplot of groups in a \code{oneway} object
+#'
+#' @param x A \code{oneway} object
+#' @param xlab X label of graph
+#' @param ylab Y label of graph
+#' @param main Main plot title
+#' @param ... Optional graphing arguments to be passed to
+#' \code{boxplot}
+#'@param names Names of factor levels
+#' @seealso \code{link{boxplot}}
+#'
+#' @export
+plot.oneway <- function(x, names=x$groups, xlab="Group", ylab="Response",
+                        main=capture.output(x$call), ...){
+    boxplot(x=x$data, names=names, xlab=xlab, ylab=ylab, main=main, ...)
+}
+
+#' Perform Fisher's LSD
+#'
+#' Test pairwise differences using Fisher's LSD proceduce on a
+#' \code{oneway} object
+#'
+#' @param object A \code{oneway} object
+#'
+#' @export
+lsmeans <- function(object) UseMethod("lsmeans")
+
+#' @export
+lsmeans.default <- function(object){
+    if(!(class(object)=="oneway")){
+        stop("lsmeans only accepts class \"oneway\"")
+    }
+}
+
+#' @export
+lsmeans.oneway <- function(object) {
+    object <- summary(object)
+    if(object$P > 0.05){
+        warning("F-test is not significant at alpha=0.05.")
+    }
+    compare <- function(i, j){
+        d <- object$ls.means[i] - object$ls.means[j]
+        s.e <- sqrt(object$MS[2]*(1/object$n.vec[i] + 1/object$n.vec[j]))
+        t.val <- d/s.e
+        round(2*pt(abs(t.val), object$N-object$a, lower.tail=FALSE),4)
+    }
+    p.vals <- pairwise.table(compare.levels=compare,
+                             level.names=object$groups,
+                             p.adjust.method="none")
+    result <- list(p.value=p.vals, call=match.call())
+    class(result) <- "lsmeans"
+    result
+}
+
+#' @export
+print.lsmeans <- function(x, ...){
+    cat("Call:\n\t")
+    print(x$call)
+    cat("\nFisher's LSD Table\n")
+    cat("\nP-Values:\n")
+    print.table(x$p.value, na.print="-")
+}
+
+```
+	
+#### 2. Edit the DESCRIPTION file.
+
+```
+Package: oneway
+Type: Package
+Title: Oneway Analysis of Variance
+Version: 0.1
+Date: 2015-08-02
+Author: Doug Raffle
+Maintainer: Doug Raffle <dcraffle@mix.wvu.edu>
+Description: Performs a oneway analysis of variance given: a named list of samples, a vector of responses and a factor with the group labels, or a formula.
+License: GPL-3
+LazyData: TRUE
+```
+
+#### 3. Generate a NAMESPACE file using `roxygen2`. That is, export (or less likely import) appropriate functions or S3 methods.
+
+```
+# Generated by roxygen2 (4.1.1): do not edit by hand
+
+S3method(lsmeans,default)
+S3method(lsmeans,oneway)
+S3method(oneway,default)
+S3method(oneway,factor)
+S3method(oneway,formula)
+S3method(plot,oneway)
+S3method(print,lsmeans)
+S3method(print,oneway)
+S3method(print,summary.oneway)
+S3method(summary,oneway)
+export(lsmeans)
+export(oneway)
+
+```
+
+#### 4. Develop a help file called `oneway.Rd`, or similar files, which contains the help information for all the functions defined in `oneway.R`, or in similar files. The help file(s) should be placed in a subdirectory called `man`. You should use `roxygen2` for this process.
+
+#### 5. Create an image file from the `coagulation` data set using `save()` and place `coagulation.rda` in the subdirectory `data`.
+```{r, eval = FALSE}
+library(faraway)
+data(coagulation)
+save(coagulation, file = "./data/coagulation.rda")
+```
+
+#### 6. Develop a help file called `coagulation.Rd`, which contains the help information for the `coagulation` data set. This file should be placed in the `man` subdirectory. Again use `roxygen2`.
+
+#### 7. Build the package using the `R CMD build` and the `R CMD check` commands or by RStudio commands or `devtools`. The process should be iterated until bugs are found and corrected. You can use the debugging tools you have learned. Once complete, install the package.
+	
+#### 8. Show the output from the help files using: `library(oneway)`, `help(oneway)`, help for specific functions, and `help(coagulation)`, etc.
+```{r install package, eval = FALSE}
+library(devtools)
+install_github("raffled/oneway")
+
+## OR from source
+install.packages("oneway_0.1_R_x86_64-pc-linux-gnu.tar.gz",
+                 repos = NULL, type = "source")
+```
+```{r oneway.help}
+library(oneway)
+help(oneway) 
+help(oneway.factor)
+help("oneway.formula")
+help(summary.oneway)
+help(plot.oneway)
+help(lsmeans)
+help("coagulation")
+```
+The help files should provide all relevant information.
+
+#### 9. Illustrate your functions using:  
+```{r oneway.example}
+example(oneway)
+```
+The example should illustrate all aspects of your code.
